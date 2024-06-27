@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+option go_package = "./ordergrpc";
+
+package ordermanager;
+
+service OrderManager {
+  rpc CreateOrder (CreateOrderRequest) returns (CreateOrderResponse);
+}
+
+// Request message for creating an order
+message CreateOrderRequest {
+  string pair = 1;
+  string market = 2;
+  ActionType action = 3;
+  Behavior behavior = 4;
+  string price = 5;
+  Quantity quantity = 6;
+  repeated Deadline deadlines = 7;
+}
+
+// Response message for creating an order
+message CreateOrderResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// Amount message to specify type and value
+message Quantity {
+  QuantityType type = 1;
+  string value = 2;
+}
+
+// Deadline message to specify type, value, and action
+message Deadline {
+  DeadlineType type = 1;
+  // Type: TIME => the number of seconds
+  string value = 2;
+  DeadlineAction action = 3;
+}
+
+// Enum for action type (sell or buy)
+enum ActionType {
+  UNKNOWN_ACTION = 0;
+  SELL = 1;
+  BUY = 2;
+}
+
+// Enum for engine behavior (market or limit)
+enum Behavior {
+  UNKNOWN_BEHAVIOR = 0;
+  MARKET = 1;
+  LIMIT = 2;
+}
+
+// Enum for amount type (scalar or percent)
+enum QuantityType {
+  UNKNOWN_QUANTITY_TYPE = 0;
+  FIXED = 1;
+  PERCENT = 2;
+}
+
+// Enum for deadline type (time)
+enum DeadlineType {
+  UNKNOWN_DEADLINE_TYPE = 0;
+  TIME = 1;
+}
+
+// Enum for deadline action (cancel or sellByMarket)
+enum DeadlineAction {
+  UNKNOWN_DEADLINE_ACTION = 0;
+  CANCEL = 1;
+  SELL_BY_MARKET = 2;
+}
