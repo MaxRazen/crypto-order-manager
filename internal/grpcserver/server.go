@@ -1,11 +1,11 @@
-package main
+package grpcserver
 
 import (
 	"context"
-	"log"
 	"net"
 	"strings"
 
+	"github.com/MaxRazen/crypto-order-manager/internal/logger"
 	"github.com/MaxRazen/crypto-order-manager/internal/order"
 	"github.com/MaxRazen/crypto-order-manager/internal/ordergrpc"
 	"google.golang.org/grpc"
@@ -17,12 +17,14 @@ import (
 // server is used to implement ordermanager.OrderManagerServer
 type server struct {
 	ordergrpc.UnimplementedOrderManagerServer
+	log *logger.Logger
+	ctx context.Context
 }
 
 // CreateOrder implements ordermanager.OrderManagerServer
 func (s *server) CreateOrder(ctx context.Context, req *ordergrpc.CreateOrderRequest) (*ordergrpc.CreateOrderResponse, error) {
 	// Log the received request
-	log.Printf("Received CreateOrder request: %v", req)
+	s.log.Debug(ctx, "received CreateOrder request", req)
 
 	data, err := order.Validate(req)
 	if err != nil {
@@ -32,7 +34,7 @@ func (s *server) CreateOrder(ctx context.Context, req *ordergrpc.CreateOrderRequ
 		}, nil
 	}
 
-	log.Printf("received request is validated: %v", data)
+	s.log.Debug(ctx, "received request is validated", data)
 
 	// Here you would add your business logic to handle the order creation
 	// For this example, we just return a success response
@@ -63,11 +65,11 @@ func valid(authorization []string) bool {
 	return token == "some-secret-token"
 }
 
-func runServer(port string) {
+func Run(ctx context.Context, log *logger.Logger, port string) error {
 	lis, err := net.Listen("tcp", ":"+port)
 
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		log.Fatal(ctx, "failed to listen", "error", err)
 	}
 
 	opts := []grpc.ServerOption{
@@ -76,11 +78,12 @@ func runServer(port string) {
 
 	s := grpc.NewServer(opts...)
 
-	ordergrpc.RegisterOrderManagerServer(s, &server{})
+	ordergrpc.RegisterOrderManagerServer(s, &server{
+		log: log,
+		ctx: ctx,
+	})
 
-	log.Printf("Server listening at %v", lis.Addr())
+	log.Info(ctx, "server listening at "+lis.Addr().String())
 
-	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
-	}
+	return s.Serve(lis)
 }
