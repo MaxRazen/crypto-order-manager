@@ -1,34 +1,30 @@
 package order
 
-import (
-	"net/http"
+import "cloud.google.com/go/datastore"
+
+const (
+	IncomingOrdersKind = "incoming_orders"
 )
 
+type CreationData struct {
+	DSKey     *datastore.Key `datastore:"__key__"`
+	ID        int64          `datastore:"id"`
+	Pair      string         `datastore:"pair"`
+	Market    string         `datastore:"market"`
+	Action    string         `datastore:"action,noindex"`
+	Behavior  string         `datastore:"behavior,noindex"`
+	Price     string         `datastore:"price,noindex"`
+	Quantity  Quantity       `datastore:"quantity,noindex"`
+	Deadlines []Deadline     `datastore:"deadlines,noindex"`
+}
+
 type Quantity struct {
-	Type  string
-	Value string
+	Type  string `datastore:"type,noindex"`
+	Value string `datastore:"value,noindex"`
 }
 
 type Deadline struct {
-	Type   string
-	Value  string
-	Action string
-}
-
-type CreationData struct {
-	Pair      string
-	Market    string
-	Action    string
-	Behavior  string
-	Price     string
-	Quantity  Quantity
-	Deadlines []Deadline
-}
-
-func CreateHandler(w http.ResponseWriter, r *http.Request) {
-	// schema := jsonschema.NewReferenceLoaderFileSystem()
-}
-
-func Create(data CreationData) {
-
+	Type   string `datastore:"type,noindex"`
+	Value  string `datastore:"value,noindex"`
+	Action string `datastore:"action,noindex"`
 }

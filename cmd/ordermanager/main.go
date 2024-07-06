@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/MaxRazen/crypto-order-manager/internal/app"
 	"github.com/MaxRazen/crypto-order-manager/internal/config"
 	"github.com/MaxRazen/crypto-order-manager/internal/grpcserver"
 	"github.com/MaxRazen/crypto-order-manager/internal/logger"
@@ -19,9 +20,9 @@ func main() {
 	// -------------------------------------------------------------------------
 	// Init Logger
 
-	logLevel := logger.LevelInfo
+	logLevel := logger.LevelDebug
 	if build != "devonly" {
-		logLevel = logger.LevelDebug
+		logLevel = logger.LevelInfo
 	}
 
 	log := logger.New(os.Stdout, logLevel)
@@ -31,9 +32,11 @@ func main() {
 	// Run application
 
 	if err := run(ctx, log); err != nil {
+		println("exiting with error")
 		log.Fatal(ctx, "startup", err)
-		os.Exit(1)
 	}
+
+	os.Exit(0)
 }
 
 func run(ctx context.Context, log *logger.Logger) error {
@@ -45,7 +48,12 @@ func run(ctx context.Context, log *logger.Logger) error {
 	if err == config.ErrHelpWanted {
 		return nil
 	} else if err != nil {
-		log.Fatal(ctx, err.Error())
+		return err
+	}
+
+	envVars, err := config.ParseEnvs(cfg.EnvPath)
+	if err != nil {
+		return err
 	}
 
 	shutdown := make(chan os.Signal, 1)
@@ -54,10 +62,18 @@ func run(ctx context.Context, log *logger.Logger) error {
 	serverErrors := make(chan error, 1)
 
 	// -------------------------------------------------------------------------
+	// Init Application
+
+	app, err := app.New(ctx, cfg, envVars)
+	if err != nil {
+		return err
+	}
+
+	// -------------------------------------------------------------------------
 	// Run GRPC Server
 
 	go func() {
-		serverErrors <- grpcserver.Run(ctx, log, cfg.Port)
+		serverErrors <- grpcserver.Run(ctx, log, app, envVars.GRPC_AUTHORIZATION_TOKEN, cfg.Port)
 	}()
 
 	// -------------------------------------------------------------------------
@@ -71,6 +87,10 @@ func run(ctx context.Context, log *logger.Logger) error {
 		log.Info(ctx, "shutdown", "status", "shutdown started", "signal", sig)
 		defer log.Info(ctx, "shutdown", "status", "shutdown complete", "signal", sig)
 
+		// close storage
+		if err := app.Storage.Close(); err != nil {
+			return err
+		}
 		// TODO: shutdown grpc server and release resources
 	}
 

@@ -2,9 +2,11 @@ package grpcserver
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"strings"
 
+	"github.com/MaxRazen/crypto-order-manager/internal/app"
 	"github.com/MaxRazen/crypto-order-manager/internal/logger"
 	"github.com/MaxRazen/crypto-order-manager/internal/order"
 	"github.com/MaxRazen/crypto-order-manager/internal/ordergrpc"
@@ -18,29 +20,38 @@ import (
 type server struct {
 	ordergrpc.UnimplementedOrderManagerServer
 	log *logger.Logger
-	ctx context.Context
+	app *app.App
 }
 
 // CreateOrder implements ordermanager.OrderManagerServer
 func (s *server) CreateOrder(ctx context.Context, req *ordergrpc.CreateOrderRequest) (*ordergrpc.CreateOrderResponse, error) {
-	// Log the received request
-	s.log.Debug(ctx, "received CreateOrder request", req)
+	s.log.Debug(ctx, "received CreateOrder request", "request", req)
 
+	// extracting & validating data from request
 	data, err := order.Validate(req)
 	if err != nil {
+		s.log.Debug(ctx, "validation failed", "error", err)
 		return &ordergrpc.CreateOrderResponse{
 			Success: false,
 			Message: err.Error(),
 		}, nil
 	}
 
-	s.log.Debug(ctx, "received request is validated", data)
+	s.log.Debug(ctx, "received request is validated", "data", data)
 
-	// Here you would add your business logic to handle the order creation
-	// For this example, we just return a success response
+	// placing order
+	err = order.SaveOrder(ctx, s.log, s.app, data)
+	if err != nil {
+		s.log.Error(ctx, "order cannot be saved", "error", err)
+		return &ordergrpc.CreateOrderResponse{
+			Success: false,
+			Message: "Order cannot be processed",
+		}, nil
+	}
+
 	return &ordergrpc.CreateOrderResponse{
 		Success: true,
-		Message: "Order created successfully",
+		Message: "Order creation request is accepted successfully",
 	}, nil
 }
 
@@ -62,14 +73,17 @@ func valid(authorization []string) bool {
 		return false
 	}
 	token := strings.TrimPrefix(authorization[0], "Bearer ")
-	return token == "some-secret-token"
+	return token == authorizationToken
 }
 
-func Run(ctx context.Context, log *logger.Logger, port string) error {
+var authorizationToken string
+
+func Run(ctx context.Context, log *logger.Logger, app *app.App, authToken, port string) error {
+	authorizationToken = authToken
 	lis, err := net.Listen("tcp", ":"+port)
 
 	if err != nil {
-		log.Fatal(ctx, "failed to listen", "error", err)
+		return fmt.Errorf("failed to listen: %v", err)
 	}
 
 	opts := []grpc.ServerOption{
@@ -80,7 +94,7 @@ func Run(ctx context.Context, log *logger.Logger, port string) error {
 
 	ordergrpc.RegisterOrderManagerServer(s, &server{
 		log: log,
-		ctx: ctx,
+		app: app,
 	})
 
 	log.Info(ctx, "server listening at "+lis.Addr().String())

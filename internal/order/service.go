@@ -1,11 +1,15 @@
 package order
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"regexp"
 
+	"github.com/MaxRazen/crypto-order-manager/internal/app"
+	"github.com/MaxRazen/crypto-order-manager/internal/logger"
 	"github.com/MaxRazen/crypto-order-manager/internal/ordergrpc"
+	"github.com/MaxRazen/crypto-order-manager/internal/storage"
 )
 
 func Validate(req *ordergrpc.CreateOrderRequest) (*CreationData, error) {
@@ -91,8 +95,14 @@ func Validate(req *ordergrpc.CreateOrderRequest) (*CreationData, error) {
 	return &data, nil
 }
 
-func PlaceOrder() {
+func SaveOrder(ctx context.Context, log *logger.Logger, app *app.App, data *CreationData) error {
+	dk := storage.NewIDKey(IncomingOrdersKind, storage.GenerateID())
 
+	if _, err := app.Storage.Put(ctx, dk, data); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func NewTracker() {

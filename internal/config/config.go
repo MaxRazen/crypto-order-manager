@@ -13,8 +13,9 @@ var ErrHelpWanted = conf.ErrHelpWanted
 
 type Config struct {
 	conf.Version
-	Port   string `conf:"default:50051" desc:"GRPC Server port"`
-	DryRun bool   `conf:"default:false" desc:"Run service in dry run mode. Received orders won't be places."`
+	EnvPath string `conf:"default:.env" desc:"Path to dotenv file"`
+	Port    string `conf:"default:50051" desc:"GRPC Server port"`
+	DryRun  bool   `conf:"default:false" desc:"Run service in dry run mode. Received orders won't be places."`
 }
 
 type EnvVariables struct {

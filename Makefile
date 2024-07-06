@@ -19,6 +19,10 @@ tidy:
 grpc-generate:
 	protoc --go_out=internal --go-grpc_out=internal protofiles/ordermanager.proto
 
+## build: 
+build:
+	go build -ldflags "-X main.build=release" ./cmd/ordermanager
+
 ## run: Compile and runs ordermanager
 run:
 	go run ./cmd/ordermanager
