@@ -4,6 +4,7 @@ import "cloud.google.com/go/datastore"
 
 const (
 	IncomingOrdersKind = "incoming_orders"
+	PlacedOrderKind    = "placed_orders"
 )
 
 type CreationData struct {

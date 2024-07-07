@@ -21,6 +21,7 @@ type server struct {
 	ordergrpc.UnimplementedOrderManagerServer
 	log *logger.Logger
 	app *app.App
+	ctx context.Context // global context to use in delayed gorutines
 }
 
 // CreateOrder implements ordermanager.OrderManagerServer
@@ -48,6 +49,8 @@ func (s *server) CreateOrder(ctx context.Context, req *ordergrpc.CreateOrderRequ
 			Message: "Order cannot be processed",
 		}, nil
 	}
+
+	go order.PlaceOrder(s.ctx, s.log, s.app, data)
 
 	return &ordergrpc.CreateOrderResponse{
 		Success: true,
@@ -95,6 +98,7 @@ func Run(ctx context.Context, log *logger.Logger, app *app.App, authToken, port 
 	ordergrpc.RegisterOrderManagerServer(s, &server{
 		log: log,
 		app: app,
+		ctx: ctx,
 	})
 
 	log.Info(ctx, "server listening at "+lis.Addr().String())

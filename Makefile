@@ -25,7 +25,7 @@ build:
 
 ## run: Compile and runs ordermanager
 run:
-	go run ./cmd/ordermanager
+	go run ./cmd/ordermanager --dry-run
 
 ## test: Runs tests across the project with no cache
 test:

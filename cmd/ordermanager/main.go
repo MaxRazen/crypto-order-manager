@@ -11,6 +11,7 @@ import (
 	"github.com/MaxRazen/crypto-order-manager/internal/config"
 	"github.com/MaxRazen/crypto-order-manager/internal/grpcserver"
 	"github.com/MaxRazen/crypto-order-manager/internal/logger"
+	"github.com/MaxRazen/crypto-order-manager/internal/tracker"
 )
 
 var build string = "devonly"
@@ -60,6 +61,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
 
 	serverErrors := make(chan error, 1)
+	trackerErrors := make(chan error, 1)
 
 	// -------------------------------------------------------------------------
 	// Init Application
@@ -77,11 +79,23 @@ func run(ctx context.Context, log *logger.Logger) error {
 	}()
 
 	// -------------------------------------------------------------------------
+	// Init & Run Order Tracker
+
+	tracker := tracker.New(log, app.Storage)
+
+	go func() {
+		trackerErrors <- tracker.Start(ctx)
+	}()
+
+	// -------------------------------------------------------------------------
 	// Shutdown
 
 	select {
 	case err := <-serverErrors:
 		return fmt.Errorf("server error: %w", err)
+
+	case err := <-trackerErrors:
+		return fmt.Errorf("tracker error: %w", err)
 
 	case sig := <-shutdown:
 		log.Info(ctx, "shutdown", "status", "shutdown started", "signal", sig)
@@ -91,6 +105,8 @@ func run(ctx context.Context, log *logger.Logger) error {
 		if err := app.Storage.Close(); err != nil {
 			return err
 		}
+
+		tracker.Stop(ctx)
 		// TODO: shutdown grpc server and release resources
 	}
 
