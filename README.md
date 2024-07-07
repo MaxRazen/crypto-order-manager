@@ -8,4 +8,6 @@
 - [ ] Implement order placement service
 - [ ] Implement order tracker
 - [ ] Notification service integration
+- [ ] Broadcast logs to cloud
+- [ ] Integrate metric system
 
