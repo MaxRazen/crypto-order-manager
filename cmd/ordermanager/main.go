@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	"github.com/MaxRazen/crypto-order-manager/internal/app"
 	"github.com/MaxRazen/crypto-order-manager/internal/config"
 	"github.com/MaxRazen/crypto-order-manager/internal/grpcserver"
 	"github.com/MaxRazen/crypto-order-manager/internal/logger"
-	"github.com/MaxRazen/crypto-order-manager/internal/tracker"
 )
 
 var build string = "devonly"
@@ -66,25 +66,36 @@ func run(ctx context.Context, log *logger.Logger) error {
 	// -------------------------------------------------------------------------
 	// Init Application
 
-	app, err := app.New(ctx, cfg, envVars)
+	app, err := app.New(ctx, log, cfg, envVars)
 	if err != nil {
 		return err
 	}
+
+	var wg sync.WaitGroup
+
+	// -------------------------------------------------------------------------
+	// Run Order placement service
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		app.OrderPlacer.Init(ctx).Run(ctx, app.OrderTracker.GetInputChan())
+	}()
+
+	// -------------------------------------------------------------------------
+	// Run Order Tracker service
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		trackerErrors <- app.OrderTracker.Run(ctx)
+	}()
 
 	// -------------------------------------------------------------------------
 	// Run GRPC Server
 
 	go func() {
 		serverErrors <- grpcserver.Run(ctx, log, app, envVars.GRPC_AUTHORIZATION_TOKEN, cfg.Port)
-	}()
-
-	// -------------------------------------------------------------------------
-	// Init & Run Order Tracker
-
-	tracker := tracker.New(log, app.Storage)
-
-	go func() {
-		trackerErrors <- tracker.Start(ctx)
 	}()
 
 	// -------------------------------------------------------------------------
@@ -101,13 +112,15 @@ func run(ctx context.Context, log *logger.Logger) error {
 		log.Info(ctx, "shutdown", "status", "shutdown started", "signal", sig)
 		defer log.Info(ctx, "shutdown", "status", "shutdown complete", "signal", sig)
 
+		// TODO: shutdown grpc server and release resources
+		app.OrderTracker.Stop(ctx)
+		app.OrderPlacer.Stop()
+		wg.Wait()
+
 		// close storage
 		if err := app.Storage.Close(); err != nil {
 			return err
 		}
-
-		tracker.Stop(ctx)
-		// TODO: shutdown grpc server and release resources
 	}
 
 	return nil

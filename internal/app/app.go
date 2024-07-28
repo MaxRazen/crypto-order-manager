@@ -6,16 +6,21 @@ import (
 	"cloud.google.com/go/datastore"
 	"github.com/MaxRazen/crypto-order-manager/internal/binance"
 	"github.com/MaxRazen/crypto-order-manager/internal/config"
+	"github.com/MaxRazen/crypto-order-manager/internal/logger"
 	"github.com/MaxRazen/crypto-order-manager/internal/market"
+	"github.com/MaxRazen/crypto-order-manager/internal/order"
 	"github.com/MaxRazen/crypto-order-manager/internal/storage"
+	"github.com/MaxRazen/crypto-order-manager/internal/tracker"
 )
 
 type App struct {
-	Storage *datastore.Client
-	Markets map[string]market.MarketClient
+	Storage      *datastore.Client
+	Markets      *market.Collection
+	OrderPlacer  *order.PlacementService
+	OrderTracker *tracker.Tracker
 }
 
-func New(ctx context.Context, cfg *config.Config, envVars *config.EnvVariables) (*App, error) {
+func New(ctx context.Context, log *logger.Logger, cfg *config.Config, envVars *config.EnvVariables) (*App, error) {
 	// -------------------------------------------------------------------------
 	// Init datastore by GCP
 
@@ -29,22 +34,40 @@ func New(ctx context.Context, cfg *config.Config, envVars *config.EnvVariables) 
 	}
 
 	// -------------------------------------------------------------------------
+	// Init repositories
+
+	orderRepo := order.NewRepository(ds)
+	placedOrderRepo := market.NewRepository(ds)
+
+	// -------------------------------------------------------------------------
 	// Init market clients
 
-	markets := make(map[string]market.MarketClient)
-	markets["binance"] = binance.New(
+	markets := market.NewCollection()
+	markets.Add(binance.New(
 		envVars.BINANCE_API_KEY,
 		envVars.BINANCE_SECRET_KEY,
 		envVars.BINANCE_BASE_URL,
 		cfg.DryRun,
-	)
+	))
+
+	// -------------------------------------------------------------------------
+	// Init Order placement service
+
+	ordPlacer := order.NewPlacementService(log, orderRepo, placedOrderRepo, markets)
+
+	// -------------------------------------------------------------------------
+	// Init Order tracker service
+
+	ordTracker := tracker.New(log, placedOrderRepo)
 
 	// -------------------------------------------------------------------------
 	// Wrap everything into app
 
 	app := App{
-		Storage: ds,
-		Markets: markets,
+		Storage:      ds,
+		Markets:      markets,
+		OrderPlacer:  ordPlacer,
+		OrderTracker: ordTracker,
 	}
 
 	return &app, nil

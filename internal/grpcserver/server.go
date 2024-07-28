@@ -40,8 +40,8 @@ func (s *server) CreateOrder(ctx context.Context, req *ordergrpc.CreateOrderRequ
 
 	s.log.Debug(ctx, "received request is validated", "data", data)
 
-	// placing order
-	err = order.SaveOrder(ctx, s.log, s.app, data)
+	// creating an order
+	ord, err := order.Create(ctx, s.log, s.app.Storage, data)
 	if err != nil {
 		s.log.Error(ctx, "order cannot be saved", "error", err)
 		return &ordergrpc.CreateOrderResponse{
@@ -50,7 +50,8 @@ func (s *server) CreateOrder(ctx context.Context, req *ordergrpc.CreateOrderRequ
 		}, nil
 	}
 
-	go order.PlaceOrder(s.ctx, s.log, s.app, data)
+	// putting order to the queue for placement in background
+	s.app.OrderPlacer.Add(ctx, ord)
 
 	return &ordergrpc.CreateOrderResponse{
 		Success: true,

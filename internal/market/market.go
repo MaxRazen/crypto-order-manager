@@ -1,10 +1,18 @@
 package market
 
-import "context"
+import (
+	"context"
+
+	"cloud.google.com/go/datastore"
+)
 
 const (
-	ActionBuy  = "BUY"
-	ActionSell = "SELL"
+	PlacedOrderKind = "placed_orders"
+	ActionBuy       = "BUY"
+	ActionSell      = "SELL"
+	StatusNew       = "new"
+	StatusCompleted = "completed"
+	StatusCanceled  = "canceled"
 )
 
 type AssetBalance struct {
@@ -21,10 +29,12 @@ type OrderCreationData struct {
 	Quantity      float64
 }
 
+// rename to Order ?
 type PlacedOrder struct {
-	OrderId       string `datastore:"orderId"`
-	ClientOrderId string `datastore:"clientOrderId"`
-	Status        string `datastore:"status"`
+	DSKey         *datastore.Key `datastore:"__key__"`
+	OrderId       string         `datastore:"orderId"`
+	ClientOrderId string         `datastore:"clientOrderId"`
+	Status        string         `datastore:"status"`
 }
 
 type ExchangeInfo struct {
@@ -85,4 +95,23 @@ type OrderFetcher interface {
 
 type ExchangeInfoFetcher interface {
 	GetExchangeInfo(ctx context.Context) (*ExchangeInfo, error)
+}
+
+type Collection struct {
+	markets map[string]MarketClient
+}
+
+func NewCollection() *Collection {
+	return &Collection{
+		markets: make(map[string]MarketClient),
+	}
+}
+
+func (c *Collection) Add(mc MarketClient) {
+	c.markets[mc.Name()] = mc
+}
+
+func (c *Collection) Get(name string) (MarketClient, bool) {
+	mc, ok := c.markets[name]
+	return mc, ok
 }
