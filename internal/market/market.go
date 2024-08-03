@@ -33,6 +33,7 @@ type OrderCreationData struct {
 type PlacedOrder struct {
 	DSKey         *datastore.Key `datastore:"__key__"`
 	OrderId       string         `datastore:"orderId"`
+	Market        string         `datastore:"market"`
 	ClientOrderId string         `datastore:"clientOrderId"`
 	Status        string         `datastore:"status"`
 }
@@ -67,6 +68,7 @@ type MarketClient interface {
 	OrderCanceler
 	OrderFetcher
 	ExchangeInfoFetcher
+	StatusTranslator
 }
 
 type PriceFormatter interface {
@@ -90,11 +92,15 @@ type OrderCanceler interface {
 }
 
 type OrderFetcher interface {
-	GetOrder(ctx context.Context, orderId string) error
+	GetOrder(ctx context.Context, orderId string) (*PlacedOrder, error)
 }
 
 type ExchangeInfoFetcher interface {
 	GetExchangeInfo(ctx context.Context) (*ExchangeInfo, error)
+}
+
+type StatusTranslator interface {
+	TranslatedStatus(status string) string
 }
 
 type Collection struct {

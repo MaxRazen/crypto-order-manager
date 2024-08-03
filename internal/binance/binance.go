@@ -80,6 +80,7 @@ func (bc *BinanceClient) PlaceOrder(ctx context.Context, orderData market.OrderC
 			return nil, err
 		}
 		placedOrderData := market.PlacedOrder{
+			Market:        bc.Name(),
 			OrderId:       fmt.Sprintf("100%d%d", rand.IntN(1000), time.Now().UnixMilli()),
 			ClientOrderId: orderData.ClientOrderId,
 			Status:        "ACTIVE",
@@ -110,6 +111,7 @@ func (bc *BinanceClient) PlaceOrder(ctx context.Context, orderData market.OrderC
 	}
 
 	placedOrderData := market.PlacedOrder{
+		Market:        bc.Name(),
 		OrderId:       strconv.FormatInt(resp.OrderId, 10),
 		ClientOrderId: resp.ClientOrderId,
 		Status:        resp.Status,
@@ -129,8 +131,8 @@ func (bc *BinanceClient) CancelOrder(ctx context.Context, orderId string) error 
 	return nil
 }
 
-func (bc *BinanceClient) GetOrder(ctx context.Context, orderId string) error {
-	return nil
+func (bc *BinanceClient) GetOrder(ctx context.Context, orderId string) (*market.PlacedOrder, error) {
+	return nil, nil
 }
 
 func (bc *BinanceClient) GetExchangeInfo(ctx context.Context) (*market.ExchangeInfo, error) {
@@ -160,6 +162,23 @@ func (bc *BinanceClient) GetExchangeInfo(ctx context.Context) (*market.ExchangeI
 	}
 
 	return &exchangeInfo, nil
+}
+
+func (bc *BinanceClient) TranslatedStatus(status string) string {
+	// NEW
+	// PARTIALLY_FILLED
+	// FILLED
+	// CANCELED
+	// PENDING_CANCEL
+	// REJECTED
+	// EXPIRED
+	// EXPIRED_IN_MATCH
+	if status == "NEW" || status == "PARTIALLY_FILLED" {
+		return market.StatusNew
+	} else if status == "FILLED" {
+		return market.StatusCompleted
+	}
+	return market.StatusCanceled
 }
 
 func parseFloat(val string) float64 {
