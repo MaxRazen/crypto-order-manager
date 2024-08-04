@@ -10,22 +10,32 @@ import (
 	"github.com/MaxRazen/crypto-order-manager/internal/market"
 )
 
+type trackingItem struct {
+	order     market.PlacedOrder
+	checkedAt time.Time
+	done      bool
+}
+
 type Tracker struct {
-	mu       sync.Mutex
+	mu       sync.RWMutex
 	log      *logger.Logger
-	rep      *market.Repository
-	orders   []market.PlacedOrder
+	rep      market.PlacedOrderRepository
+	markets  *market.Collection
+	items    []*trackingItem
 	ticker   *time.Ticker
+	intval   time.Duration
 	shutdown chan struct{}
 	input    chan market.PlacedOrder
 }
 
-func New(log *logger.Logger, rep *market.Repository) *Tracker {
+func New(log *logger.Logger, rep market.PlacedOrderRepository, markets *market.Collection, tickInterval, checkInterval time.Duration) *Tracker {
 	return &Tracker{
 		log:      log,
 		rep:      rep,
-		orders:   make([]market.PlacedOrder, 0),
-		ticker:   time.NewTicker(30 * time.Second),
+		markets:  markets,
+		items:    make([]*trackingItem, 0),
+		ticker:   time.NewTicker(tickInterval),
+		intval:   checkInterval,
 		shutdown: make(chan struct{}),
 		input:    make(chan market.PlacedOrder),
 	}
@@ -67,7 +77,7 @@ func (t *Tracker) Run(ctx context.Context) error {
 			}
 		case tcr := <-t.ticker.C:
 			t.log.Debug(ctx, "tracker :: tick :: "+tcr.Format(time.TimeOnly))
-			t.tick()
+			t.tick(ctx)
 		}
 	}
 }
@@ -77,12 +87,77 @@ func (t *Tracker) Stop(ctx context.Context) {
 	t.shutdown <- struct{}{}
 }
 
-func (t *Tracker) tick() {
-	// TODO
+func (t *Tracker) tick(ctx context.Context) {
+	for idx, itm := range t.items {
+		if itm.done {
+			if _, err := t.popByIndex(idx); err != nil {
+				t.log.Error(ctx, "tracker: tick cleanup", "error", err)
+			}
+		}
+	}
+
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	for _, itm := range t.items {
+		if itm.checkedAt.Add(t.intval).Before(time.Now()) {
+			continue
+		}
+
+		go t.check(ctx, itm)
+	}
+}
+
+func (t *Tracker) check(ctx context.Context, ti *trackingItem) {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	mc, ok := t.markets.Get(ti.order.Market)
+	if !ok {
+		t.log.Error(ctx, fmt.Sprintf("tracker: market is not supported '%s'", ti.order.Market))
+		ti.done = true
+		return
+	}
+
+	po, err := mc.GetOrder(ctx, ti.order.OrderId)
+	if err != nil {
+		t.log.Error(ctx, "tracker: order obtain error", "error", err)
+		ti.done = true
+		return
+	}
+
+	if ti.order.Status != po.Status {
+		t.rep.UpdateStatus(ctx, &ti.order, po.Status)
+		t.log.Debug(ctx, "tracker: order status has been changed", "old", ti.order.Status, "new", po.Status)
+	}
+
+	status := mc.TranslatedStatus(po.Status)
+	if status == market.StatusCompleted || status == market.StatusCanceled {
+		ti.done = true
+	}
+
+	ti.checkedAt = time.Now()
 }
 
 func (t *Tracker) put(o market.PlacedOrder) {
+	item := trackingItem{
+		order: o,
+	}
 	t.mu.Lock()
-	t.orders = append(t.orders, o)
+	t.items = append(t.items, &item)
 	t.mu.Unlock()
+}
+
+func (t *Tracker) popByIndex(idx int) (*trackingItem, error) {
+	if idx < 0 || idx >= len(t.items) {
+		return nil, fmt.Errorf("index out of range")
+	}
+
+	item := t.items[idx]
+
+	t.mu.Lock()
+	t.items = append(t.items[:idx], t.items[idx+1:]...)
+	t.mu.Unlock()
+
+	return item, nil
 }

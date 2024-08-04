@@ -2,6 +2,8 @@ package app
 
 import (
 	"context"
+	"strconv"
+	"time"
 
 	"cloud.google.com/go/datastore"
 	"github.com/MaxRazen/crypto-order-manager/internal/binance"
@@ -58,7 +60,9 @@ func New(ctx context.Context, log *logger.Logger, cfg *config.Config, envVars *c
 	// -------------------------------------------------------------------------
 	// Init Order tracker service
 
-	ordTracker := tracker.New(log, placedOrderRepo)
+	tickInterval, _ := strconv.Atoi(envVars.TICKER_TICK_INTERVAL)
+	checkInterval, _ := strconv.Atoi(envVars.TICKER_CHECK_INTERVAL)
+	ordTracker := tracker.New(log, placedOrderRepo, markets, time.Duration(tickInterval)*time.Second, time.Duration(checkInterval)*time.Second)
 
 	// -------------------------------------------------------------------------
 	// Wrap everything into app

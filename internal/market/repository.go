@@ -7,17 +7,23 @@ import (
 	"github.com/MaxRazen/crypto-order-manager/internal/storage"
 )
 
-type Repository struct {
+type PlacedOrderRepository interface {
+	Create(ctx context.Context, o *PlacedOrder) error
+	FetchAllUncompleted(ctx context.Context) ([]PlacedOrder, error)
+	UpdateStatus(ctx context.Context, o *PlacedOrder, status string) error
+}
+
+type PlacedOrderDatastoreRepository struct {
 	ds *datastore.Client
 }
 
-func NewRepository(ds *datastore.Client) *Repository {
-	return &Repository{
+func NewRepository(ds *datastore.Client) *PlacedOrderDatastoreRepository {
+	return &PlacedOrderDatastoreRepository{
 		ds: ds,
 	}
 }
 
-func (r *Repository) Create(ctx context.Context, o *PlacedOrder) error {
+func (r *PlacedOrderDatastoreRepository) Create(ctx context.Context, o *PlacedOrder) error {
 	dsk := storage.NewIDKey(PlacedOrderKind, storage.GenerateID())
 	dsk, err := r.ds.Put(ctx, dsk, o)
 	if err == nil {
@@ -26,14 +32,14 @@ func (r *Repository) Create(ctx context.Context, o *PlacedOrder) error {
 	return err
 }
 
-func (r *Repository) FetchAllUncompleted(ctx context.Context) ([]PlacedOrder, error) {
+func (r *PlacedOrderDatastoreRepository) FetchAllUncompleted(ctx context.Context) ([]PlacedOrder, error) {
 	var orders []PlacedOrder
 	q := datastore.NewQuery(PlacedOrderKind).FilterField("status", "=", StatusNew)
 	_, err := r.ds.GetAll(ctx, q, &orders)
 	return orders, err
 }
 
-func (r *Repository) UpdateStatus(ctx context.Context, o *PlacedOrder, status string) error {
+func (r *PlacedOrderDatastoreRepository) UpdateStatus(ctx context.Context, o *PlacedOrder, status string) error {
 	_, err := r.ds.RunInTransaction(ctx, func(tx *datastore.Transaction) error {
 		if err := tx.Get(o.DSKey, &o); err != nil {
 			return err

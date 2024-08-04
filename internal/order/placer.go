@@ -24,7 +24,7 @@ var (
 
 type PlacementService struct {
 	log        *logger.Logger
-	placedRep  *market.Repository
+	placedRep  *market.PlacedOrderDatastoreRepository
 	rep        *Repository
 	markets    *market.Collection
 	input      chan *Order
@@ -32,7 +32,7 @@ type PlacementService struct {
 	inProgress atomic.Int32
 }
 
-func NewPlacementService(log *logger.Logger, rep *Repository, placedRep *market.Repository, markets *market.Collection) *PlacementService {
+func NewPlacementService(log *logger.Logger, rep *Repository, placedRep *market.PlacedOrderDatastoreRepository, markets *market.Collection) *PlacementService {
 	return &PlacementService{
 		log:        log,
 		rep:        rep,

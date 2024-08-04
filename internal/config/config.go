@@ -25,6 +25,8 @@ type EnvVariables struct {
 	BINANCE_BASE_URL         string
 	BINANCE_API_KEY          string
 	BINANCE_SECRET_KEY       string
+	TICKER_TICK_INTERVAL     string
+	TICKER_CHECK_INTERVAL    string
 }
 
 const (
@@ -34,6 +36,8 @@ const (
 	BINANCE_BASE_URL         = "BINANCE_BASE_URL"
 	BINANCE_API_KEY          = "BINANCE_API_KEY"
 	BINANCE_SECRET_KEY       = "BINANCE_SECRET_KEY"
+	TICKER_TICK_INTERVAL     = "TICKER_TICK_INTERVAL"
+	TICKER_CHECK_INTERVAL    = "TICKER_CHECK_INTERVAL"
 )
 
 func Parse(build string) (*Config, error) {
@@ -70,6 +74,8 @@ func ParseEnvs(filename string) (*EnvVariables, error) {
 		BINANCE_BASE_URL:         os.Getenv(BINANCE_BASE_URL),
 		BINANCE_API_KEY:          os.Getenv(BINANCE_API_KEY),
 		BINANCE_SECRET_KEY:       os.Getenv(BINANCE_SECRET_KEY),
+		TICKER_TICK_INTERVAL:     os.Getenv(TICKER_TICK_INTERVAL),
+		TICKER_CHECK_INTERVAL:    os.Getenv(TICKER_CHECK_INTERVAL),
 	}
 
 	return &envVars, nil
