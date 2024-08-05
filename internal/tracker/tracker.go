@@ -68,6 +68,7 @@ func (t *Tracker) Run(ctx context.Context) error {
 		select {
 		case order, ok := <-t.input:
 			if ok {
+				t.log.Debug(ctx, "adding a new order to the queue")
 				t.put(order)
 			}
 		case _, ok := <-t.shutdown:
@@ -99,8 +100,9 @@ func (t *Tracker) tick(ctx context.Context) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
+	now := time.Now()
 	for _, itm := range t.items {
-		if itm.checkedAt.Add(t.intval).Before(time.Now()) {
+		if itm.checkedAt.Add(t.intval).Before(now) {
 			continue
 		}
 
@@ -111,6 +113,8 @@ func (t *Tracker) tick(ctx context.Context) {
 func (t *Tracker) check(ctx context.Context, ti *trackingItem) {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
+
+	t.log.Debug(ctx, "tracker: order to be checked: #"+ti.order.ClientOrderId)
 
 	mc, ok := t.markets.Get(ti.order.Market)
 	if !ok {
@@ -133,6 +137,7 @@ func (t *Tracker) check(ctx context.Context, ti *trackingItem) {
 
 	status := mc.TranslatedStatus(po.Status)
 	if status == market.StatusCompleted || status == market.StatusCanceled {
+		t.log.Debug(ctx, "tracker: order has been canceled or completed", "orderId", ti.order.ClientOrderId)
 		ti.done = true
 	}
 
@@ -141,7 +146,8 @@ func (t *Tracker) check(ctx context.Context, ti *trackingItem) {
 
 func (t *Tracker) put(o market.PlacedOrder) {
 	item := trackingItem{
-		order: o,
+		order:     o,
+		checkedAt: time.Now(),
 	}
 	t.mu.Lock()
 	t.items = append(t.items, &item)

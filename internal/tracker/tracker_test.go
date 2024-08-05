@@ -8,7 +8,7 @@ import (
 	"github.com/MaxRazen/crypto-order-manager/internal/market"
 	"github.com/MaxRazen/crypto-order-manager/internal/storage"
 	"github.com/MaxRazen/crypto-order-manager/internal/testpkg"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestRun(t *testing.T) {
@@ -32,7 +32,7 @@ func TestRun(t *testing.T) {
 		OrderId:       "10001",
 		Market:        "mock",
 		ClientOrderId: "701",
-		Status:        market.StatusNew,
+		Status:        "NEW",
 	}
 
 	inputOrderSecond := market.PlacedOrder{
@@ -40,18 +40,21 @@ func TestRun(t *testing.T) {
 		OrderId:       "10002",
 		Market:        "mock",
 		ClientOrderId: "702",
-		Status:        market.StatusNew,
+		Status:        "NEW",
 	}
 
 	responseOrderFirst := inputOrderFirst
 	responseOrderSecond := inputOrderSecond
 
+	repo.On("UpdateStatus", mock.Anything, &inputOrderFirst, "FILLED").Return(nil)
+	repo.On("UpdateStatus", mock.Anything, &inputOrderSecond, "CANCELED").Return(nil)
+
 	// -------------------------------------------------------------------------
 	// Init markets collection
 
 	mc := new(testpkg.MarketClientMock)
-	mc.On("GetOrder", ctx, inputOrderFirst.OrderId).Return(&responseOrderFirst, nil)
-	mc.On("GetOrder", ctx, inputOrderSecond.OrderId).Return(&responseOrderSecond, nil)
+	mc.On("GetOrder", mock.Anything, inputOrderFirst.OrderId).Return(&responseOrderFirst, nil)
+	mc.On("GetOrder", mock.Anything, inputOrderSecond.OrderId).Return(&responseOrderSecond, nil)
 
 	markets := market.NewCollection()
 	markets.Add(mc)
@@ -74,11 +77,17 @@ func TestRun(t *testing.T) {
 		inputChan <- inputOrderFirst
 	}()
 
-	time.Sleep(35 * time.Millisecond)
-
-	go func() {
+	// -------------------------------------------------------------------------
+	// Simulate asyncronius inputs/changes
+	time.AfterFunc(35*time.Microsecond, func() {
 		inputChan <- inputOrderSecond
-	}()
+	})
+	time.AfterFunc(45*time.Millisecond, func() {
+		responseOrderFirst.Status = "FILLED"
+	})
+	time.AfterFunc(160*time.Millisecond, func() {
+		responseOrderSecond.Status = "CANCELED"
+	})
 
 	time.Sleep(200 * time.Millisecond)
 	tr.Stop(ctx)
@@ -87,7 +96,9 @@ func TestRun(t *testing.T) {
 	// Assert results
 
 	err := <-trackerErrors
-	assert.Nil(t, err, "tracker finished with error")
+	if err != nil {
+		t.Errorf("tracker finished with error: %v", err)
+	}
 
-	t.Logf("\n----------- LOGS -----------\n%s----------- LOGS END -----------\n", logBuffer.String())
+	testpkg.VerboseOutput(t, logBuffer.String())
 }

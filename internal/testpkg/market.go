@@ -80,7 +80,5 @@ func (r *PlacedOrderRepositoryMock) FetchAllUncompleted(ctx context.Context) ([]
 
 func (r *PlacedOrderRepositoryMock) UpdateStatus(ctx context.Context, o *market.PlacedOrder, status string) error {
 	args := r.Called(ctx, o, status)
-	o.Status = status
-
 	return args.Error(0)
 }
