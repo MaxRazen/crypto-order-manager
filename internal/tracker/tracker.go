@@ -49,7 +49,7 @@ func (t *Tracker) Init(ctx context.Context) *Tracker {
 	}
 
 	if len(orders) > 0 {
-		t.log.Info(ctx, fmt.Sprintf("ps: initializing... %d orders to be placed", len(orders)))
+		t.log.Info(ctx, fmt.Sprintf("tracker: initializing... %d orders to be placed", len(orders)))
 	}
 
 	for _, o := range orders {
