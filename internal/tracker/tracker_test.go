@@ -56,10 +56,14 @@ func TestInit(t *testing.T) {
 
 	tr := New(log, repo, markets, 20*time.Millisecond, 50*time.Millisecond)
 
-	tr.Init(ctx)
+	err := tr.Init(ctx)
 
 	// -------------------------------------------------------------------------
 	// Assert expectations
+
+	if !assert.Nil(t, err, "tracker.Init returned an error") {
+		t.Logf("tracker.Init error: %v", err)
+	}
 
 	assert.Equal(t, 2, len(tr.items))
 	repo.AssertExpectations(t)

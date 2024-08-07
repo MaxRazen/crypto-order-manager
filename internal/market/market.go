@@ -29,13 +29,19 @@ type OrderCreationData struct {
 	Quantity      float64
 }
 
-// rename to Order ?
 type PlacedOrder struct {
 	DSKey         *datastore.Key `datastore:"__key__"`
 	OrderId       string         `datastore:"orderId"`
 	Market        string         `datastore:"market"`
 	ClientOrderId string         `datastore:"clientOrderId"`
 	Status        string         `datastore:"status"`
+	Deadlines     []Deadline     `datastore:"deadlines,noindex"`
+}
+
+type Deadline struct {
+	Type   string `datastore:"type,noindex"`
+	Value  string `datastore:"value,noindex"`
+	Action string `datastore:"action,noindex"`
 }
 
 type ExchangeInfo struct {

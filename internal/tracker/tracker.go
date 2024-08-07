@@ -10,6 +10,11 @@ import (
 	"github.com/MaxRazen/crypto-order-manager/internal/market"
 )
 
+type PlacedOrderRepository interface {
+	FetchAllUncompleted(ctx context.Context) ([]market.PlacedOrder, error)
+	UpdateStatus(ctx context.Context, o *market.PlacedOrder, status string) error
+}
+
 type trackingItem struct {
 	order     market.PlacedOrder
 	checkedAt time.Time
@@ -19,7 +24,7 @@ type trackingItem struct {
 type Tracker struct {
 	mu       sync.RWMutex
 	log      *logger.Logger
-	rep      market.PlacedOrderRepository
+	rep      PlacedOrderRepository
 	markets  *market.Collection
 	items    []*trackingItem
 	ticker   *time.Ticker
@@ -28,7 +33,7 @@ type Tracker struct {
 	input    chan market.PlacedOrder
 }
 
-func New(log *logger.Logger, rep market.PlacedOrderRepository, markets *market.Collection, tickInterval, checkInterval time.Duration) *Tracker {
+func New(log *logger.Logger, rep PlacedOrderRepository, markets *market.Collection, tickInterval, checkInterval time.Duration) *Tracker {
 	return &Tracker{
 		log:      log,
 		rep:      rep,
@@ -41,11 +46,10 @@ func New(log *logger.Logger, rep market.PlacedOrderRepository, markets *market.C
 	}
 }
 
-func (t *Tracker) Init(ctx context.Context) *Tracker {
+func (t *Tracker) Init(ctx context.Context) error {
 	orders, err := t.rep.FetchAllUncompleted(ctx)
 	if err != nil {
-		t.log.Error(ctx, "tracker: initializing error", "error", err.Error())
-		return t
+		return err
 	}
 
 	if len(orders) > 0 {
@@ -56,7 +60,7 @@ func (t *Tracker) Init(ctx context.Context) *Tracker {
 		t.put(o)
 	}
 
-	return t
+	return nil
 }
 
 func (t *Tracker) GetInputChan() chan<- market.PlacedOrder {

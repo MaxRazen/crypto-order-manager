@@ -79,7 +79,11 @@ func run(ctx context.Context, log *logger.Logger) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		app.OrderPlacer.Init(ctx).Run(ctx, app.OrderTracker.GetInputChan())
+		if err := app.OrderPlacer.Init(ctx); err != nil {
+			log.Fatal(ctx, "ps: initializing error", "error", err.Error())
+		}
+
+		app.OrderPlacer.Run(ctx, app.OrderTracker.GetInputChan())
 	}()
 
 	// -------------------------------------------------------------------------
@@ -88,6 +92,10 @@ func run(ctx context.Context, log *logger.Logger) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		if err := app.OrderTracker.Init(ctx); err != nil {
+			log.Fatal(ctx, "tracker: initializing error", "error", err.Error())
+		}
+
 		trackerErrors <- app.OrderTracker.Run(ctx)
 	}()
 

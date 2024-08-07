@@ -7,12 +7,6 @@ import (
 	"github.com/MaxRazen/crypto-order-manager/internal/storage"
 )
 
-type PlacedOrderRepository interface {
-	Create(ctx context.Context, o *PlacedOrder) error
-	FetchAllUncompleted(ctx context.Context) ([]PlacedOrder, error)
-	UpdateStatus(ctx context.Context, o *PlacedOrder, status string) error
-}
-
 type PlacedOrderDatastoreRepository struct {
 	ds *datastore.Client
 }

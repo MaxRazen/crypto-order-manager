@@ -11,6 +11,7 @@ import (
 	"github.com/MaxRazen/crypto-order-manager/internal/logger"
 	"github.com/MaxRazen/crypto-order-manager/internal/market"
 	"github.com/MaxRazen/crypto-order-manager/internal/order"
+	"github.com/MaxRazen/crypto-order-manager/internal/placer"
 	"github.com/MaxRazen/crypto-order-manager/internal/storage"
 	"github.com/MaxRazen/crypto-order-manager/internal/tracker"
 )
@@ -18,7 +19,7 @@ import (
 type App struct {
 	Storage      *datastore.Client
 	Markets      *market.Collection
-	OrderPlacer  *order.PlacementService
+	OrderPlacer  *placer.PlacementService
 	OrderTracker *tracker.Tracker
 }
 
@@ -55,7 +56,7 @@ func New(ctx context.Context, log *logger.Logger, cfg *config.Config, envVars *c
 	// -------------------------------------------------------------------------
 	// Init Order placement service
 
-	ordPlacer := order.NewPlacementService(log, orderRepo, placedOrderRepo, markets)
+	ordPlacer := placer.NewPlacementService(log, orderRepo, placedOrderRepo, markets)
 
 	// -------------------------------------------------------------------------
 	// Init Order tracker service

@@ -2,7 +2,6 @@ package order
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"regexp"
 	"time"
@@ -13,11 +12,6 @@ import (
 	"github.com/MaxRazen/crypto-order-manager/internal/storage"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-)
-
-var (
-	errQuantityLimit  = errors.New("provided quantity value is too big")
-	errNoEnoughAssets = errors.New("provided quantity value is too small")
 )
 
 func Validate(req *ordergrpc.CreateOrderRequest) (*NewOrder, error) {
