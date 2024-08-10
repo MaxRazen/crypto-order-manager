@@ -12,6 +12,10 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+var contextArgument = mock.MatchedBy(func(_ context.Context) bool {
+	return true
+})
+
 var inputOrderFirst = market.PlacedOrder{
 	DSKey:         storage.NewIDKey(market.PlacedOrderKind, storage.GenerateID()),
 	OrderId:       "10001",
@@ -42,7 +46,7 @@ func TestInit(t *testing.T) {
 	dsResponse := []market.PlacedOrder{inputOrderFirst, inputOrderSecond}
 
 	repo := new(testpkg.PlacedOrderRepositoryMock)
-	repo.On("FetchAllUncompleted", mock.Anything).Once().Return(dsResponse, nil)
+	repo.On("FetchAllUncompleted", contextArgument).Once().Return(dsResponse, nil)
 
 	// -------------------------------------------------------------------------
 	// Init markets collection
@@ -84,8 +88,8 @@ func TestRun(t *testing.T) {
 	// Init repository
 
 	repo := new(testpkg.PlacedOrderRepositoryMock)
-	repo.On("UpdateStatus", mock.Anything, &inputOrderFirst, "FILLED").Return(nil)
-	repo.On("UpdateStatus", mock.Anything, &inputOrderSecond, "CANCELED").Return(nil)
+	repo.On("UpdateStatus", contextArgument, &inputOrderFirst, "FILLED").Return(nil)
+	repo.On("UpdateStatus", contextArgument, &inputOrderSecond, "CANCELED").Return(nil)
 
 	// -------------------------------------------------------------------------
 	// Init markets collection
@@ -94,8 +98,8 @@ func TestRun(t *testing.T) {
 	responseOrderSecond := inputOrderSecond
 
 	mc := new(testpkg.MarketClientMock)
-	mc.On("GetOrder", mock.Anything, inputOrderFirst.OrderId).Return(&responseOrderFirst, nil)
-	mc.On("GetOrder", mock.Anything, inputOrderSecond.OrderId).Return(&responseOrderSecond, nil)
+	mc.On("GetOrder", contextArgument, inputOrderFirst.OrderId).Return(&responseOrderFirst, nil)
+	mc.On("GetOrder", contextArgument, inputOrderSecond.OrderId).Return(&responseOrderSecond, nil)
 
 	markets := market.NewCollection()
 	markets.Add(mc)
@@ -108,10 +112,9 @@ func TestRun(t *testing.T) {
 	// -------------------------------------------------------------------------
 	// Run tracker & do some work
 
-	trackerErrors := make(chan error, 1)
 	inputChan := tr.GetInputChan()
 	go func() {
-		trackerErrors <- tr.Run(ctx)
+		tr.Run(ctx)
 	}()
 
 	go func() {
@@ -135,11 +138,6 @@ func TestRun(t *testing.T) {
 
 	// -------------------------------------------------------------------------
 	// Assert expectations
-
-	err := <-trackerErrors
-	if err != nil {
-		t.Errorf("tracker finished with error: %v", err)
-	}
 
 	mc.AssertExpectations(t)
 	repo.AssertExpectations(t)

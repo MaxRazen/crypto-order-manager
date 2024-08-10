@@ -34,13 +34,14 @@ type PlacedOrderRepository interface {
 }
 
 type PlacementService struct {
-	log        *logger.Logger
-	orderRep   OrderRepository
-	marketRep  PlacedOrderRepository
-	markets    *market.Collection
-	input      chan *order.Order
-	shutdown   chan struct{}
-	inProgress atomic.Int32
+	log         *logger.Logger
+	orderRep    OrderRepository
+	marketRep   PlacedOrderRepository
+	markets     *market.Collection
+	input       chan *order.Order
+	shutdown    chan struct{}
+	terminating atomic.Bool
+	inProgress  atomic.Int32
 }
 
 func NewPlacementService(
@@ -50,13 +51,14 @@ func NewPlacementService(
 	markets *market.Collection,
 ) *PlacementService {
 	return &PlacementService{
-		log:        log,
-		orderRep:   orderRep,
-		marketRep:  marketRep,
-		markets:    markets,
-		input:      make(chan *order.Order),
-		shutdown:   make(chan struct{}),
-		inProgress: atomic.Int32{},
+		log:         log,
+		orderRep:    orderRep,
+		marketRep:   marketRep,
+		markets:     markets,
+		input:       make(chan *order.Order),
+		shutdown:    make(chan struct{}),
+		terminating: atomic.Bool{},
+		inProgress:  atomic.Int32{},
 	}
 }
 
@@ -97,19 +99,15 @@ func (ps *PlacementService) Run(ctx context.Context, trackerQueue chan<- market.
 
 func (ps *PlacementService) Stop() {
 	ps.shutdown <- struct{}{}
+	ps.terminating.Store(true)
 	close(ps.input)
 }
 
 func (ps *PlacementService) Add(ctx context.Context, order *order.Order) {
 	ps.log.Debug(ctx, "ps: adding a new order to the queue", "orderId", order.DSKey.ID)
 
-	// check if the program is in shotdown process
-	select {
-	case _, ok := <-ps.shutdown:
-		if ok {
-			return
-		}
-	default:
+	if ps.terminating.Load() {
+		return
 	}
 
 	ps.input <- order
@@ -141,6 +139,8 @@ func (ps *PlacementService) placeOrderHandler(ctx context.Context, o *order.Orde
 		}
 
 		return
+	} else {
+		ps.log.Error(ctx, "ps: placing order error", "orderId", o.DSKey.ID, "error", err)
 	}
 
 	if err := ps.orderRep.UpdateStatus(ctx, o, order.StatusFailed); err != nil {
@@ -224,6 +224,8 @@ func (ps *PlacementService) placeOrder(ctx context.Context, o *order.Order) (*ma
 		return nil, fmt.Errorf("order cannot be placed")
 	}
 
+	ps.log.Info(ctx, "order is placed", "order", placedOrder)
+
 	err = ps.marketRep.Create(ctx, placedOrder)
 	if err != nil {
 		return nil, fmt.Errorf("placed order cannot be saved to storage")
@@ -242,7 +244,7 @@ func (ps *PlacementService) placeOrder(ctx context.Context, o *order.Order) (*ma
 	}
 	placedOrder.Deadlines = deadlines
 
-	ps.log.Info(ctx, "order is placed successfully", "order", placedOrder, "key", placedOrder.DSKey)
+	ps.log.Info(ctx, "order is placed successfully", "orderId", placedOrder.ClientOrderId, "key", placedOrder.DSKey.ID)
 
 	return placedOrder, nil
 }

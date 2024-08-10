@@ -67,7 +67,7 @@ func (t *Tracker) GetInputChan() chan<- market.PlacedOrder {
 	return t.input
 }
 
-func (t *Tracker) Run(ctx context.Context) error {
+func (t *Tracker) Run(ctx context.Context) {
 	for {
 		select {
 		case order, ok := <-t.input:
@@ -78,7 +78,7 @@ func (t *Tracker) Run(ctx context.Context) error {
 		case _, ok := <-t.shutdown:
 			if ok {
 				t.log.Debug(ctx, "ticker is stopped")
-				return nil
+				return
 			}
 		case tcr := <-t.ticker.C:
 			t.log.Debug(ctx, "tracker :: tick :: "+tcr.Format(time.TimeOnly))

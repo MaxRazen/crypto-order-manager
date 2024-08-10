@@ -61,7 +61,6 @@ func run(ctx context.Context, log *logger.Logger) error {
 	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
 
 	serverErrors := make(chan error, 1)
-	trackerErrors := make(chan error, 1)
 
 	// -------------------------------------------------------------------------
 	// Init Application
@@ -96,7 +95,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 			log.Fatal(ctx, "tracker: initializing error", "error", err.Error())
 		}
 
-		trackerErrors <- app.OrderTracker.Run(ctx)
+		app.OrderTracker.Run(ctx)
 	}()
 
 	// -------------------------------------------------------------------------
@@ -112,9 +111,6 @@ func run(ctx context.Context, log *logger.Logger) error {
 	select {
 	case err := <-serverErrors:
 		return fmt.Errorf("server error: %w", err)
-
-	case err := <-trackerErrors:
-		return fmt.Errorf("tracker error: %w", err)
 
 	case sig := <-shutdown:
 		log.Info(ctx, "shutdown", "status", "shutdown started", "signal", sig)
