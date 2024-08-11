@@ -42,8 +42,8 @@ func (mc *MarketClientMock) CancelOrder(ctx context.Context, orderId string) err
 	return args.Error(0)
 }
 
-func (mc *MarketClientMock) GetOrder(ctx context.Context, orderId string) (*market.PlacedOrder, error) {
-	args := mc.Called(ctx, orderId)
+func (mc *MarketClientMock) GetOrder(ctx context.Context, pair, orderId string) (*market.PlacedOrder, error) {
+	args := mc.Called(ctx, pair, orderId)
 	return args.Get(0).(*market.PlacedOrder), args.Error(1)
 }
 

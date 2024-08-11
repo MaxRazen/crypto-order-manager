@@ -7,7 +7,7 @@
     - [x] Incoming request data validation
 - [x] Implement order placement service
 - [x] Implement order tracker
-- [ ] Add support for deadlines
+- [x] Add support for deadlines
 - [ ] Notification service integration
 - [ ] Broadcast logs to cloud
 - [ ] Integrate metric system

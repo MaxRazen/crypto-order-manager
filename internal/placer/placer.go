@@ -226,23 +226,12 @@ func (ps *PlacementService) placeOrder(ctx context.Context, o *order.Order) (*ma
 
 	ps.log.Info(ctx, "order is placed", "order", placedOrder)
 
+	placedOrder.Deadlines = o.Deadlines
+
 	err = ps.marketRep.Create(ctx, placedOrder)
 	if err != nil {
 		return nil, fmt.Errorf("placed order cannot be saved to storage")
 	}
-
-	// -------------------------------------------------------------------------
-	// Copy deadlines
-
-	deadlines := make([]market.Deadline, 0, len(o.Deadlines))
-	for _, dl := range o.Deadlines {
-		deadlines = append(deadlines, market.Deadline{
-			Type:   dl.Type,
-			Value:  dl.Value,
-			Action: dl.Action,
-		})
-	}
-	placedOrder.Deadlines = deadlines
 
 	ps.log.Info(ctx, "order is placed successfully", "orderId", placedOrder.ClientOrderId, "key", placedOrder.DSKey.ID)
 

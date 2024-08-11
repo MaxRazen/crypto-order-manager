@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/datastore"
+	"github.com/MaxRazen/crypto-order-manager/internal/deadline"
 	"github.com/MaxRazen/crypto-order-manager/internal/logger"
 	"github.com/MaxRazen/crypto-order-manager/internal/ordergrpc"
 	"github.com/MaxRazen/crypto-order-manager/internal/storage"
@@ -58,18 +59,12 @@ func Validate(req *ordergrpc.CreateOrderRequest) (*NewOrder, error) {
 
 	// validate Deadline properties
 	reqDeadlines := req.GetDeadlines()
-	deadlines := make([]Deadline, 0, len(reqDeadlines))
+	deadlines := make([]deadline.Deadline, 0, len(reqDeadlines))
 	for idx, d := range reqDeadlines {
 		// validate Deadline.type property
 		dType := d.Type.String()
 		if d.Type == ordergrpc.DeadlineType_UNKNOWN_DEADLINE_TYPE {
 			return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("deadlines[%v].type must be specified", idx))
-		}
-
-		// validate Deadline.value property
-		dValue := d.Value
-		if dValue == "" {
-			return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("deadlines[%v].value must be specified", idx))
 		}
 
 		// validate Deadline.action property
@@ -78,10 +73,16 @@ func Validate(req *ordergrpc.CreateOrderRequest) (*NewOrder, error) {
 			return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("deadlines[%v].action must be specified", idx))
 		}
 
-		deadlines = append(deadlines, Deadline{
+		// validate Deadline.value property
+		dValue, err := deadline.ParseDeadlineValue(dAction, d.Value)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("deadlines[%v].value has invalid value", idx))
+		}
+
+		deadlines = append(deadlines, deadline.Deadline{
 			Type:   dType,
-			Value:  dValue,
 			Action: dAction,
+			Value:  dValue,
 		})
 	}
 

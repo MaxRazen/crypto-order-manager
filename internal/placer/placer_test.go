@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MaxRazen/crypto-order-manager/internal/deadline"
 	"github.com/MaxRazen/crypto-order-manager/internal/market"
 	"github.com/MaxRazen/crypto-order-manager/internal/order"
 	"github.com/MaxRazen/crypto-order-manager/internal/storage"
@@ -30,21 +31,27 @@ var inputOrders = []order.Order{
 		Behavior:    "LIMIT",
 		Price:       "20500.0",
 		Quantity:    order.Quantity{Type: "FIXED", Value: "0.1"},
-		Deadlines:   make([]order.Deadline, 0),
+		Deadlines:   make([]deadline.Deadline, 0),
 		CreatedAt:   time.Now(),
 		CompletedAt: time.Now(),
 	},
 	{
-		DSKey:       storage.NewIDKey(order.OrdersKind, 702),
-		Status:      order.StatusNew,
-		RuleId:      "a002",
-		Pair:        "SOL-USDT",
-		Market:      "mock",
-		Action:      market.ActionSell,
-		Behavior:    "MARKET",
-		Price:       "120.0",
-		Quantity:    order.Quantity{Type: "FIXED", Value: "2"},
-		Deadlines:   make([]order.Deadline, 0),
+		DSKey:    storage.NewIDKey(order.OrdersKind, 702),
+		Status:   order.StatusNew,
+		RuleId:   "a002",
+		Pair:     "SOL-USDT",
+		Market:   "mock",
+		Action:   market.ActionSell,
+		Behavior: "MARKET",
+		Price:    "120.0",
+		Quantity: order.Quantity{Type: "FIXED", Value: "2"},
+		Deadlines: []deadline.Deadline{
+			{
+				Type:   deadline.TypeTime,
+				Action: deadline.ActionCancel,
+				Value:  "120000",
+			},
+		},
 		CreatedAt:   time.Now(),
 		CompletedAt: time.Now(),
 	},
@@ -55,17 +62,25 @@ var placedOrders = []market.PlacedOrder{
 		DSKey:         storage.NewIDKey(market.PlacedOrderKind, 801),
 		OrderId:       "20004",
 		Market:        "mock",
+		Symbol:        "BTC-USDT",
 		ClientOrderId: "101",
 		Status:        "NEW",
-		Deadlines:     make([]market.Deadline, 0),
+		Deadlines:     make([]deadline.Deadline, 0),
 	},
 	{
 		DSKey:         storage.NewIDKey(market.PlacedOrderKind, 802),
 		OrderId:       "20005",
 		Market:        "mock",
+		Symbol:        "SOL-USDT",
 		ClientOrderId: "102",
 		Status:        "NEW",
-		Deadlines:     make([]market.Deadline, 0),
+		Deadlines: []deadline.Deadline{
+			{
+				Type:   deadline.TypeTime,
+				Action: deadline.ActionCancel,
+				Value:  "120000",
+			},
+		},
 	},
 }
 

@@ -81,9 +81,11 @@ func (bc *BinanceClient) PlaceOrder(ctx context.Context, orderData market.OrderC
 		}
 		placedOrderData := market.PlacedOrder{
 			Market:        bc.Name(),
+			Symbol:        orderData.Pair,
 			OrderId:       fmt.Sprintf("100%d%d", rand.IntN(1000), time.Now().UnixMilli()),
 			ClientOrderId: orderData.ClientOrderId,
 			Status:        "ACTIVE",
+			PlacedAt:      time.Now(),
 		}
 		return &placedOrderData, nil
 	}
@@ -112,9 +114,11 @@ func (bc *BinanceClient) PlaceOrder(ctx context.Context, orderData market.OrderC
 
 	placedOrderData := market.PlacedOrder{
 		Market:        bc.Name(),
+		Symbol:        resp.Symbol,
 		OrderId:       strconv.FormatInt(resp.OrderId, 10),
 		ClientOrderId: resp.ClientOrderId,
 		Status:        resp.Status,
+		PlacedAt:      time.Now(),
 	}
 	return &placedOrderData, nil
 }
@@ -131,8 +135,27 @@ func (bc *BinanceClient) CancelOrder(ctx context.Context, orderId string) error 
 	return nil
 }
 
-func (bc *BinanceClient) GetOrder(ctx context.Context, orderId string) (*market.PlacedOrder, error) {
-	return nil, nil
+func (bc *BinanceClient) GetOrder(ctx context.Context, pair, orderId string) (*market.PlacedOrder, error) {
+	ordId, err := strconv.ParseInt(orderId, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := bc.client.NewGetOrderService().
+		Symbol("").
+		OrderId(ordId).
+		Do(ctx)
+	if err != nil {
+		return nil, err
+	}
+	po := market.PlacedOrder{
+		Market:        bc.Name(),
+		Symbol:        resp.Symbol,
+		OrderId:       strconv.FormatInt(resp.OrderId, 10),
+		ClientOrderId: resp.ClientOrderId,
+		Status:        resp.Status,
+		PlacedAt:      time.UnixMilli(int64(resp.Time)),
+	}
+	return &po, nil
 }
 
 func (bc *BinanceClient) GetExchangeInfo(ctx context.Context) (*market.ExchangeInfo, error) {

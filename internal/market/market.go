@@ -2,8 +2,10 @@ package market
 
 import (
 	"context"
+	"time"
 
 	"cloud.google.com/go/datastore"
+	"github.com/MaxRazen/crypto-order-manager/internal/deadline"
 )
 
 const (
@@ -30,18 +32,14 @@ type OrderCreationData struct {
 }
 
 type PlacedOrder struct {
-	DSKey         *datastore.Key `datastore:"__key__"`
-	OrderId       string         `datastore:"orderId"`
-	Market        string         `datastore:"market"`
-	ClientOrderId string         `datastore:"clientOrderId"`
-	Status        string         `datastore:"status"`
-	Deadlines     []Deadline     `datastore:"deadlines,noindex"`
-}
-
-type Deadline struct {
-	Type   string `datastore:"type,noindex"`
-	Value  string `datastore:"value,noindex"`
-	Action string `datastore:"action,noindex"`
+	DSKey         *datastore.Key      `datastore:"__key__"`
+	Market        string              `datastore:"market"`
+	Symbol        string              `datastore:"symbol"`
+	OrderId       string              `datastore:"orderId"`
+	ClientOrderId string              `datastore:"clientOrderId"`
+	Status        string              `datastore:"status"`
+	Deadlines     []deadline.Deadline `datastore:"deadlines,noindex"`
+	PlacedAt      time.Time           `datastore:"created_at,noindex"`
 }
 
 type ExchangeInfo struct {
@@ -98,7 +96,7 @@ type OrderCanceler interface {
 }
 
 type OrderFetcher interface {
-	GetOrder(ctx context.Context, orderId string) (*PlacedOrder, error)
+	GetOrder(ctx context.Context, pair, orderId string) (*PlacedOrder, error)
 }
 
 type ExchangeInfoFetcher interface {
