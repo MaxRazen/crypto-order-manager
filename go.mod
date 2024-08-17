@@ -4,6 +4,7 @@ go 1.22.2
 
 require (
 	cloud.google.com/go/datastore v1.15.0
+	cloud.google.com/go/pubsub v1.36.1
 	github.com/ardanlabs/conf/v3 v3.1.7
 	github.com/binance/binance-connector-go v0.6.0
 	github.com/google/go-cmp v0.6.0
@@ -19,6 +20,7 @@ require (
 	cloud.google.com/go v0.112.1 // indirect
 	cloud.google.com/go/compute v1.25.1 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
+	cloud.google.com/go/iam v1.1.6 // indirect
 	github.com/bitly/go-simplejson v0.5.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect

@@ -10,6 +10,7 @@ import (
 	"github.com/MaxRazen/crypto-order-manager/internal/config"
 	"github.com/MaxRazen/crypto-order-manager/internal/logger"
 	"github.com/MaxRazen/crypto-order-manager/internal/market"
+	"github.com/MaxRazen/crypto-order-manager/internal/notifier"
 	"github.com/MaxRazen/crypto-order-manager/internal/order"
 	"github.com/MaxRazen/crypto-order-manager/internal/placer"
 	"github.com/MaxRazen/crypto-order-manager/internal/storage"
@@ -21,6 +22,7 @@ type App struct {
 	Markets      *market.Collection
 	OrderPlacer  *placer.PlacementService
 	OrderTracker *tracker.Tracker
+	Notifier     *notifier.Notifier
 }
 
 func New(ctx context.Context, log *logger.Logger, cfg *config.Config, envVars *config.EnvVariables) (*App, error) {
@@ -28,6 +30,19 @@ func New(ctx context.Context, log *logger.Logger, cfg *config.Config, envVars *c
 	// Init datastore by GCP
 
 	ds, err := storage.New(ctx, storage.ClientOptions{
+		ProjectId:      envVars.GCP_PROJECT_ID,
+		ServiceKeyFile: envVars.GCP_SERVICE_KEY_FILE,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// Init notifier client
+
+	notifier, err := notifier.New(ctx, notifier.Config{
+		Topic:          envVars.NOTIFICATION_TOPIC,
 		ProjectId:      envVars.GCP_PROJECT_ID,
 		ServiceKeyFile: envVars.GCP_SERVICE_KEY_FILE,
 	})
@@ -73,6 +88,7 @@ func New(ctx context.Context, log *logger.Logger, cfg *config.Config, envVars *c
 		Markets:      markets,
 		OrderPlacer:  ordPlacer,
 		OrderTracker: ordTracker,
+		Notifier:     notifier,
 	}
 
 	return &app, nil

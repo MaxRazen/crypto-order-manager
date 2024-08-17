@@ -119,6 +119,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 		// TODO: shutdown grpc server and release resources
 		app.OrderTracker.Stop(ctx)
 		app.OrderPlacer.Stop()
+		app.Notifier.Release()
 		wg.Wait()
 
 		// close storage
